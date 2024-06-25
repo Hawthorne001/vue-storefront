@@ -1,10 +1,14 @@
 import { buildModule, middlewareModule } from "@vue-storefront/sdk";
-import { composeMiddlewareUrl, useNuxtApp, useRequestHeaders } from "#imports";
-import { SdkModuleOptions } from "./vsfModule";
+import { composeMiddlewareUrl, useNuxtApp, useRequestHeaders, getDefaultMethodsRequestConfig } from "#imports";
+import { SdkModuleOptions } from "./alokaiModule";
 
 type InjectedContext = {
   buildModule: typeof buildModule;
   middlewareModule: typeof middlewareModule;
+  /**
+   * @deprecated
+   * Use `config.middlewareUrl` instead.
+   */
   middlewareUrl: string;
   /**
    * @deprecated
@@ -12,6 +16,16 @@ type InjectedContext = {
    */
   getCookieHeader: () => Record<string, string>;
   getRequestHeaders: () => Record<string, string>;
+  /**
+   * @deprecated
+   * Use `config.defaults` instead.
+   */
+  defaults: ReturnType<typeof getDefaultMethodsRequestConfig>;
+  config: {
+    middlewareUrl: string;
+    defaultMethodsRequestConfig: ReturnType<typeof getDefaultMethodsRequestConfig>;
+    cdnCacheBustingId: string;
+  };
 };
 
 type Config<TConfig> = (context: InjectedContext) => TConfig;
@@ -30,15 +44,17 @@ const moduleConfig: SdkModuleOptions = <%= options.moduleConfig %>;
   *   ContentfulModuleType,
   * } from "@vsf-enterprise/contentful-sdk";
   * import type { UnifiedApiEndpoints } from "../storefront-middleware/types";
-  * 
+  *
   * export default defineSdkConfig(
-  *   ({ buildModule, middlewareModule, middlewareUrl, getCookieHeader }) => ({
+  *   ({ buildModule, middlewareModule, config, getCookieHeader }) => ({
   *     unified: buildModule(middlewareModule<UnifiedApiEndpoints>, {
-  *       apiUrl: middlewareUrl + "/commerce",
+  *       apiUrl: config.middlewareUrl + "/commerce",
   *       defaultRequestConfig: { headers: { ...getCookieHeader() } },
+  *       cdnCacheBustingId: config.cdnCacheBustingId,
+  *       methodsRequestConfig: config.defaultMethodsRequestConfig.unifiedCommerce.middlewareModule,
   *     }),
   *     contentful: buildModule(contentfulModule, {
-  *       apiUrl: middlewareUrl + "/cntf",
+  *       apiUrl: config.middlewareUrl + "/cntf",
   *     }),
   *   }),
   * );
@@ -48,15 +64,10 @@ export function defineSdkConfig<TConfig>(config: Config<TConfig>) {
   return () => {
     const nuxtApp = useNuxtApp()
     const runtimeConfig = useRuntimeConfig();
-    const { middleware, multistore } = runtimeConfig.public;
-    const resolvedOptions = {
-      middleware: middleware ?? moduleConfig.middleware,
-      multistore: multistore ?? moduleConfig.multistore,
-    }
 
     const requestHeaders = useRequestHeaders(["x-forwarded-host", "host"]);
     const middlewareUrl = composeMiddlewareUrl({
-      options: resolvedOptions,
+      options: runtimeConfig.public.alokai,
       headers: requestHeaders,
     });
 
@@ -66,9 +77,15 @@ export function defineSdkConfig<TConfig>(config: Config<TConfig>) {
     return config({
       buildModule,
       middlewareModule,
-      middlewareUrl,
       getCookieHeader,
-      getRequestHeaders
+      getRequestHeaders,
+      defaults: getDefaultMethodsRequestConfig(),
+      middlewareUrl,
+      config: {
+        defaultMethodsRequestConfig: getDefaultMethodsRequestConfig(),
+        middlewareUrl,
+        cdnCacheBustingId: runtimeConfig.public.alokai.middleware.cdnCacheBustingId,
+      }
     });
   }
 }

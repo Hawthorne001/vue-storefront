@@ -1,6 +1,7 @@
+/* eslint-disable no-secrets/no-secrets */
 import { SDKApi, buildModule, middlewareModule } from "@vue-storefront/sdk";
 import { ReactNode } from "react";
-import type { contextConfig } from "@storefront/shared";
+import type { defaultMethodsRequestConfig } from "@storefront/shared";
 export type GetSdkContext = {
   /**
    * A function that returns the request headers.
@@ -17,16 +18,28 @@ export type DynamicContext = {
 export type StaticContext = {
   buildModule: typeof buildModule;
   middlewareModule: typeof middlewareModule;
+  /**
+   * @deprecated Use `config.middlewareUrl` instead.
+   */
   middlewareUrl: string;
-  defaults: typeof contextConfig;
+  /**
+   * @deprecated Use `config.defaultMethodsRequestConfig` instead.
+   */
+  defaults: typeof defaultMethodsRequestConfig;
+  config: {
+    middlewareUrl: string;
+    defaultMethodsRequestConfig: typeof defaultMethodsRequestConfig;
+    cdnCacheBustingId: string;
+  };
 };
 
 type InjectedContext = DynamicContext & StaticContext;
 
 export type Config<TConfig> = (context: InjectedContext) => TConfig;
 
-export type SdkProviderProps = {
+export type SdkProviderProps<TSdk> = {
   children: ReactNode;
+  sdk: TSdk;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,6 +91,6 @@ export interface CreateSdkReturn<TConfig extends Record<string, any>> {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type CreateSdkContextReturn<TSdk extends SDKApi<any>> = readonly [
-  ({ children }: SdkProviderProps) => JSX.Element,
+  ({ children }: SdkProviderProps<TSdk>) => JSX.Element,
   () => TSdk
 ];
