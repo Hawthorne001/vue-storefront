@@ -1,6 +1,5 @@
 import { AnyFunction } from "../../types";
 import { isConfig } from "./consts";
-import { SdkHttpError } from "./utils";
 
 /**
  * Represents the constraint for API endpoint functions within the SDK.
@@ -118,7 +117,7 @@ export type HTTPClient = (
    * The computed configuration for the HTTP request, after processing url, query params and headers.
    */
   config?: ComputedConfig
-) => Promise<true> | SdkHttpError;
+) => Promise<any>;
 
 /**
  * Provides context for error handling, encapsulating details relevant to the failed HTTP request.
@@ -153,6 +152,41 @@ export type ErrorHandlerContext = {
    * This allows for possible retry logic or logging.
    */
   httpClient: HTTPClient;
+};
+
+/**
+ * Payload for the `onRequest` logger.
+ */
+export type OnRequestPayload = {
+  /** Request config */
+  config: ComputedConfig;
+  /** Request params */
+  params: unknown[];
+  /** Request full url */
+  url: string;
+};
+
+/**
+ * Payload for the `onResponse` logger.
+ */
+export type OnResponsePayload = {
+  /** Request config */
+  config: ComputedConfig;
+  /** Request params */
+  params: unknown[];
+  response: unknown;
+  /** Time in miliseconds */
+  responseTime: number;
+  /** Request full url */
+  url: string;
+};
+
+/**
+ * Custom logger for the middlewareModule, allowing for request and response logging.
+ */
+export type Logger = {
+  onRequest?: (payload: OnRequestPayload) => void;
+  onResponse?: (payload: OnResponsePayload) => void;
 };
 
 /**
@@ -263,7 +297,51 @@ export type Options<
   /**
    * Unique identifier for CDN cache busting.
    */
-  cdnCacheBustingId: string;
+  cdnCacheBustingId?: string;
+
+  /**
+   * Logger for the module. It can be a boolean to enable/disable the default logger or a custom logger.
+   *
+   * @default true if the `ALOKAI_SDK_DEBUG` environment variable is set to `true`, otherwise `false`.
+   *
+   * @example
+   * Enable the default logger
+   *
+   * ```typescript
+   * const options: Options = {
+   *   apiUrl: "https://api.example.com",
+   *   logger: true,
+   * };
+   * ```
+   *
+   * @example
+   * Disable the default logger, even if the `ALOKAI_SDK_DEBUG` environment variable is set to `true`
+   *
+   * ```typescript
+   * const options: Options = {
+   *   apiUrl: "https://api.example.com",
+   *   logger: false,
+   * };
+   * ```
+   *
+   * @example
+   * Use a custom logger
+   *
+   * ```typescript
+   * const options: Options = {
+   *   apiUrl: "https://api.example.com",
+   *   logger: {
+   *     request: (payload) => {
+   *       console.log("Request", JSON.stringify(payload));
+   *     },
+   *     response: (payload) => {
+   *       console.log("Response", JSON.stringify(payload));
+   *     },
+   *   },
+   * };
+   * ```
+   */
+  logger?: boolean | Logger;
 };
 
 /**

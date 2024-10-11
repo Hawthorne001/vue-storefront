@@ -1,5 +1,127 @@
 # Change log
 
+## 5.0.0
+
+### Major Changes
+
+- [CHANGED] [BREAKING] Changed return type of `createServer()` from `Express` to `Server` (from built-in `node:http` package). Both of those types' interfaces have the `.listen()` method with the same shape. In some older templates for starting the middleware (`middleware.js` in your repo) you come across:
+
+```ts
+async function runMiddleware(app: Express) {
+```
+
+If you're using that older template, please change the `Express` type to `Server`:
+
+```diff
++ import { Server } from "node:http"
++ async function runMiddleware(app: Server) {
+- async function runMiddleware(app: Express) {
+```
+
+- [ADDED] New GET /readyz endpoint for middleware for using with Kubernetes readiness probes. Please see https://docs.alokai.com/middleware/guides/readiness-probes for more information
+
+## 4.3.1
+
+### Patch Changes
+
+- **[FIX]** Rollback the changes to the `ApiMethodsFactory` config generic type. It was causing incompatibility for some older packages.
+
+## 4.3.0
+
+### Minor Changes
+
+- **[ADDED]** Added factory function for the extension API. Previously the extension API was an object with a set of methods. Now it can be created using a factory function the same way as the base API.
+
+Previously only object was allowed:
+
+```ts
+export const extension: ApiClientExtension = {
+  name: "extension",
+  extendApiMethods: {
+    ...extendedMethods, //methods as an object
+  },
+};
+```
+
+Now you can either use an object or a factory function:
+
+```ts
+export const extension: ApiClientExtension = {
+  name: "extension",
+  // methods as a factory function with injected config object
+  extendApiMethods: ({ config }) => {
+    return createMyMethods(config);
+  },
+};
+```
+
+## 4.2.0
+
+### Minor Changes
+
+- **[ADDED]** Provided easy access to methods added by middleware extensions via the `context.extendedApi` property.
+
+```ts
+const extensionA = {
+  name: 'extensionA',
+  extendApiMethods: {
+    methodA: async () => { ... }
+  }
+}
+
+const extensionB = {
+  name: 'extensionB',
+  extendApiMethods: {
+    methodB: async () => { ... }
+  }
+}
+
+const extensionC = {
+  name: 'extensionC',
+  extendApiMethods: {
+    methodC: async (context) => {
+      context.extendedApi.methodA();
+      context.extendedApi.extensionB.methodB();
+    }
+  }
+}
+```
+
+## 4.1.0
+
+### Minor Changes
+
+- **[CHANGED]** [Middleware extension](https://docs.alokai.com/middleware/guides/extensions) hooks and the [onCreate](https://docs.alokai.com/middleware/guides/api-client#creating-the-integration-client) function can now be asynchronous. Examples:
+
+```ts
+// middleware.config.ts
+const middlewareExtension = {
+  name: "example-extension",
+  hooks: () => ({
+    beforeCreate: async ({ configuration }) => Promise.resolve(configuration),
+    afterCreate: async ({ configuration }) => Promise.resolve(configuration),
+    beforeCall: async ({ args }) => Promise.resolve(args),
+    afterCall: async ({ response }) => Promise.resolve(response),
+  }),
+};
+```
+
+```ts
+// index.server.ts
+import { apiClientFactory } from "@vue-storefront/middleware";
+
+const { createApiClient } = apiClientFactory({
+  onCreate: async (config) =>
+    Promise.resolve({
+      config,
+      client: {},
+    }),
+  api: {},
+});
+
+export { createApiClient };
+```
+
 ## 4.0.1
 
 ### Patch Changes

@@ -252,6 +252,67 @@ describe("middlewareModule", () => {
     );
   });
 
+  it("should remove zero-valued Content-Length header as it would crash Next.js server", async () => {
+    const customHttpClient = jest.fn();
+    const sdkConfig = {
+      commerce: buildModule(middlewareModule<Endpoints>, {
+        apiUrl: "http://localhost:8181/commerce",
+        cdnCacheBustingId: "commit-hash",
+        httpClient: customHttpClient,
+        defaultRequestConfig: {
+          headers: {
+            "Content-Length": "0",
+          },
+        },
+      }),
+    };
+    const sdk = initSDK(sdkConfig);
+
+    await sdk.commerce.getProduct({ id: 1 });
+
+    expect(customHttpClient).toHaveBeenCalledWith(
+      "http://localhost:8181/commerce/getProduct",
+      expect.any(Array),
+      expect.objectContaining({
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      })
+    );
+  });
+
+  it("should pass non-zero-valued Content-Length header", async () => {
+    const customHttpClient = jest.fn();
+    const sdkConfig = {
+      commerce: buildModule(middlewareModule<Endpoints>, {
+        apiUrl: "http://localhost:8181/commerce",
+        cdnCacheBustingId: "commit-hash",
+        httpClient: customHttpClient,
+        defaultRequestConfig: {
+          headers: {
+            "Content-Length": "1000",
+          },
+        },
+      }),
+    };
+    const sdk = initSDK(sdkConfig);
+
+    await sdk.commerce.getProduct({ id: 1 });
+
+    expect(customHttpClient).toHaveBeenCalledWith(
+      "http://localhost:8181/commerce/getProduct",
+      expect.any(Array),
+      expect.objectContaining({
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "Content-Length": "1000",
+        },
+      })
+    );
+  });
+
   it("should use different base URL during SSR if defined", async () => {
     const customHttpClient = jest.fn();
     const sdkConfig = {
@@ -322,7 +383,7 @@ describe("middlewareModule", () => {
       prepareConfig({
         method: "POST",
         headers: {
-          "X-Test": ["x-test-header", "x-test-header-2"],
+          Cookie: ["vsf-locale=123", "custom-cookie=456"],
         },
       })
     );
@@ -334,8 +395,8 @@ describe("middlewareModule", () => {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "X-Test-Default": "x-test-header,x-test-header-2",
-          "X-Test": "x-test-header,x-test-header-2",
+          "X-Test-Default": "x-test-header;x-test-header-2",
+          Cookie: "vsf-locale=123;custom-cookie=456",
         },
       })
     );
@@ -581,6 +642,7 @@ describe("middlewareModule", () => {
               statusCode: err?.response?.status || 500,
               message: err?.response?.data?.message || err.message,
               cause: err,
+              url,
             });
           }
         },
@@ -729,5 +791,81 @@ describe("middlewareModule", () => {
         method: "GET",
       })
     );
+  });
+
+  it("should allow to use the custom logger", async () => {
+    const logger = {
+      onRequest: jest.fn(),
+      onResponse: jest.fn(),
+    };
+
+    const sdk = initSDK({
+      commerce: buildModule(middlewareModule<Endpoints>, {
+        apiUrl: "http://localhost:8181/commerce",
+        cdnCacheBustingId: "commit-hash",
+        logger,
+      }),
+    });
+
+    await sdk.commerce.getProduct({ id: 1 });
+
+    expect(logger.onRequest).toHaveBeenCalled();
+    expect(logger.onRequest.mock.calls[0][0]).toMatchSnapshot();
+    expect(logger.onResponse).toHaveBeenCalled();
+    expect(logger.onResponse.mock.calls[0][0]).toMatchSnapshot({
+      responseTime: expect.any(Number),
+    });
+  });
+
+  it("should use the built in logger when ALOKAI_SDK_DEBUG is true", async () => {
+    process.env.ALOKAI_SDK_DEBUG = "true";
+    const logSpy = jest.spyOn(console, "log");
+
+    const sdk = initSDK({
+      commerce: buildModule(middlewareModule<Endpoints>, {
+        apiUrl: "http://localhost:8181/commerce",
+        cdnCacheBustingId: "commit-hash",
+      }),
+    });
+
+    await sdk.commerce.getProduct({ id: 1 });
+
+    process.env.ALOKAI_SDK_DEBUG = undefined;
+    expect(logSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("should not log when ALOKAI_SDK_DEBUG is false", async () => {
+    process.env.ALOKAI_SDK_DEBUG = "false";
+    const logSpy = jest.spyOn(console, "log");
+    logSpy.mockClear();
+
+    const sdk = initSDK({
+      commerce: buildModule(middlewareModule<Endpoints>, {
+        apiUrl: "http://localhost:8181/commerce",
+        cdnCacheBustingId: "commit-hash",
+      }),
+    });
+
+    await sdk.commerce.getProduct({ id: 1 });
+
+    process.env.ALOKAI_SDK_DEBUG = undefined;
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it("should not log when logger is false", async () => {
+    const logSpy = jest.spyOn(console, "log");
+    logSpy.mockClear();
+
+    const sdk = initSDK({
+      commerce: buildModule(middlewareModule<Endpoints>, {
+        apiUrl: "http://localhost:8181/commerce",
+        cdnCacheBustingId: "commit-hash",
+        logger: false,
+      }),
+    });
+
+    await sdk.commerce.getProduct({ id: 1 });
+
+    expect(logSpy).not.toHaveBeenCalled();
   });
 });

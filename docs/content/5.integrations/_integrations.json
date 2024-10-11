@@ -13,8 +13,7 @@
     {
       "title": "Magento/Adobe Commerce",
       "to": "/integrations/magento",
-      "icon": "logos:magento",
-      "openSource": true
+      "icon": "logos:magento"
     },
     {
       "title": "BigCommerce",
@@ -31,6 +30,12 @@
       "title": "plentysystems",
       "to": "https://pwa-docs.plentymarkets.com/",
       "icon": "IconPlentyMarkets",
+      "partnerMaintained": true
+    },
+    {
+      "title": "Odoo",
+      "to": "/integrations/odoo",
+      "icon": "IconOdoo",
       "partnerMaintained": true
     }
   ],
@@ -79,7 +84,6 @@
       "to": "/integrations/adyen-sfcc",
       "icon": "logos:adyen",
       "secondaryIcon": "logos:salesforce"
-
     }
   ],
   "Search": [
@@ -97,6 +101,13 @@
       "title": "Coveo",
       "to": "/storefront/modules/search-integrations/coveo",
       "icon": "IconCoveo"
+    }
+  ],
+  "Cache": [
+    {
+      "title": "Redis",
+      "to": "/integrations/redis",
+      "icon": "logos:redis"
     }
   ]
 }

@@ -16,17 +16,27 @@ export interface ClientContext<CLIENT = any, CONFIG = any> {
   [x: string]: any;
 }
 
-export interface IntegrationContext<CLIENT = any, CONFIG = any, API = any>
-  extends MiddlewareContext {
+export interface IntegrationContext<
+  CLIENT = any,
+  CONFIG = any,
+  API = any,
+  EXTENDED_API = any
+> extends MiddlewareContext {
   client: CLIENT;
   config: CONFIG;
   api: API;
+  extendedApi: EXTENDED_API;
 
   [x: string]: any;
 }
 
-export interface Context<CLIENT = any, CONFIG = any, API = any> {
-  [x: string]: IntegrationContext<CLIENT, CONFIG, API> | any;
+export interface Context<
+  CLIENT = any,
+  CONFIG = any,
+  API = any,
+  EXTENDED_API = any
+> {
+  [x: string]: IntegrationContext<CLIENT, CONFIG, API, EXTENDED_API> | any;
 }
 
 export type PlatformApi = {
@@ -85,7 +95,7 @@ export type CreateApiClientFn<
   <T extends ApiClientConfig, C>(
     givenConfig: CONFIG,
     customApi?: ApiMethods
-  ): ApiInstance<T, API & ApiMethods, C>;
+  ): Promise<ApiInstance<T, API & ApiMethods, C>>;
   _predefinedExtensions?: ApiClientExtension<API>[];
 };
 
@@ -99,7 +109,9 @@ export interface ApiClientFactoryParams<
   onCreate: (
     config: CONFIG,
     headers?: Record<string, string>
-  ) => { client: CLIENT; config: ApiClientConfig };
+  ) =>
+    | Promise<{ client: CLIENT; config: ApiClientConfig }>
+    | { client: CLIENT; config: ApiClientConfig };
   extensions?: ApiClientExtension<API>[];
 }
 
@@ -118,6 +130,13 @@ export type CreateApiProxyFn = <CONFIG, API, CLIENT>(
   givenConfig: any,
   customApi?: any
 ) => ApiInstance<CONFIG, API, CLIENT>;
+
+/**
+ * Function that will be called to determine readiness of middleware to accept connections
+ * @returns Return value is never considered - only thrown exceptions
+ * @throws The implementation *must* throw an exception at some point in the code, which means that the readiness check should fail
+ */
+export type ReadinessProbe = () => Promise<void>;
 
 export interface CreateServerOptions {
   /**
@@ -147,4 +166,10 @@ export interface CreateServerOptions {
    * @see https://www.npmjs.com/package/cors
    */
   cors?: CorsOptions | CorsOptionsDelegate;
+  /**
+   * Array of functions that will be called in parallel every time the /readyz endpoint receives a GET request
+   * If at least one function throws an exception, the response from the /readyz endpoint will report an error
+   * @see https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-readiness-probes
+   */
+  readinessProbes?: ReadinessProbe[];
 }

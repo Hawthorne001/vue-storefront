@@ -1,10 +1,10 @@
-import { Express } from "express";
 import request from "supertest";
+import { Server } from "http";
 import { createServer } from "../../src/index";
 import { success } from "./bootstrap/api";
 
 describe("[Integration] Create server", () => {
-  let app: Express;
+  let app: Server;
 
   beforeEach(async () => {
     app = await createServer({
@@ -176,7 +176,7 @@ describe("[Integration] Create server", () => {
     expect(error).toBeTruthy();
     if (error) {
       expect(error.text).toEqual(
-        `Extension "my-namespaced-extension" is not namespaced or the function "unavailavbleFunction" is not available in the namespace.`
+        `Failed to resolve apiClient or function: Extension "my-namespaced-extension" is not namespaced or the function "unavailavbleFunction" is not available in the namespace.`
       );
     }
   });
@@ -190,7 +190,7 @@ describe("[Integration] Create server", () => {
     expect(error).toBeTruthy();
     if (error) {
       expect(error.text).toEqual(
-        `The function "unavailavbleFunction" is not registered.`
+        `Failed to resolve apiClient or function: The function "unavailavbleFunction" is not registered.`
       );
     }
   });
